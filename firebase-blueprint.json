@@ -1,0 +1,200 @@
+{
+  "entities": {
+    "Patient": {
+      "title": "Patient",
+      "description": "Cryptographically secure Electronic Health Record for clinical patient cohorts",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the patient"
+        },
+        "code": {
+          "type": "string",
+          "description": "Unique clinical ledger code"
+        },
+        "name": {
+          "type": "string",
+          "description": "Encrypted or obfuscated patient name"
+        },
+        "age": {
+          "type": "number",
+          "description": "Age of the patient"
+        },
+        "sex": {
+          "type": "string",
+          "description": "Biological sex of the patient"
+        },
+        "phone": {
+          "type": "string",
+          "description": "Encrypted phone number"
+        },
+        "diagnosis": {
+          "type": "string",
+          "description": "Primary clinical diagnosis"
+        },
+        "consultant": {
+          "type": "string",
+          "description": "Lead consultant clinician"
+        },
+        "treatment": {
+          "type": "string",
+          "description": "Assigned treatment protocol"
+        },
+        "route": {
+          "type": "string",
+          "description": "Administration route"
+        },
+        "amount": {
+          "type": "string",
+          "description": "Clinical dosage/amount"
+        },
+        "sessionNo": {
+          "type": "number",
+          "description": "Session counter"
+        },
+        "date": {
+          "type": "string",
+          "description": "Admission date"
+        },
+        "improvement": {
+          "type": "string",
+          "description": "Improvement/Recovery status"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Encrypted clinical progress ledger notes"
+        },
+        "submittedBy": {
+          "type": "string",
+          "description": "Username of submitting clinician"
+        },
+        "lastEditedBy": {
+          "type": "string",
+          "description": "Username of last editing clinician"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp of record initialization"
+        },
+        "followUps": {
+          "type": "array",
+          "description": "Timeline array representing standard diagnostic consultations"
+        }
+      },
+      "required": [
+        "id",
+        "code",
+        "name",
+        "diagnosis",
+        "consultant",
+        "treatment",
+        "createdAt"
+      ]
+    },
+    "Clinician": {
+      "title": "Clinician",
+      "description": "EHR system login record holding credentials metadata",
+      "type": "object",
+      "properties": {
+        "username": {
+          "type": "string",
+          "description": "Unique clinician username"
+        },
+        "fullName": {
+          "type": "string",
+          "description": "Clinician full display name"
+        },
+        "role": {
+          "type": "string",
+          "description": "User hierarchy privilege tier",
+          "enum": ["admin", "co-admin", "user"]
+        }
+      },
+      "required": [
+        "username",
+        "fullName",
+        "role"
+      ]
+    },
+    "ActivityLog": {
+      "title": "ActivityLog",
+      "description": "Security audit trail tracking clinical user modifications",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "username": { "type": "string" },
+        "action": { "type": "string" },
+        "details": { "type": "string" },
+        "severity": { "type": "string", "enum": ["info", "warn", "error"] }
+      },
+      "required": ["id", "timestamp", "username", "action", "details"]
+    },
+    "PatientVersion": {
+      "title": "PatientVersion",
+      "description": "Historical copy of a patient's core clinical ledger state",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "patientId": { "type": "string" },
+        "version": { "type": "number" },
+        "timestamp": { "type": "string" },
+        "editedBy": { "type": "string" },
+        "changeSummary": { "type": "string" },
+        "patientData": { "$ref": "Patient" }
+      },
+      "required": ["id", "patientId", "version", "timestamp", "editedBy", "changeSummary", "patientData"]
+    },
+    "SystemSettings": {
+      "title": "SystemSettings",
+      "description": "Customizable medical drop-down metadata parameters",
+      "type": "object",
+      "properties": {
+        "diagnoses": {
+          "type": "array"
+        },
+        "routes": {
+          "type": "array"
+        },
+        "procedurePlaces": {
+          "type": "array"
+        },
+        "consultants": {
+          "type": "array"
+        },
+        "treatments": {
+          "type": "array"
+        },
+        "recoveryStatuses": {
+          "type": "array"
+        },
+        "theme": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "firestore": {
+    "patients/{patientId}": {
+      "schema": "Patient",
+      "description": "Full clinical patient records ledger collection"
+    },
+    "users/{userId}": {
+      "schema": "Clinician",
+      "description": "Registered clinicians dictionary"
+    },
+    "settings/global": {
+      "schema": "SystemSettings",
+      "description": "Global custom clinic settings document"
+    },
+    "activity_logs/{logId}": {
+      "schema": "ActivityLog",
+      "description": "System and user action trails for compliance auditing"
+    },
+    "patient_versions/{versionId}": {
+      "schema": "PatientVersion",
+      "description": "Clinical record snapshots supporting rolling changes"
+    }
+  }
+}

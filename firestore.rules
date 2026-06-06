@@ -1,0 +1,106 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global safety net - default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Common Helpers
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // 2. Patients Collection
+    match /patients/{patientId} {
+      allow read: if true;
+      allow create: if isValidId(patientId) && isValidPatient(request.resource.data);
+      allow update: if isValidId(patientId) && isValidPatient(request.resource.data);
+      allow delete: if isValidId(patientId);
+    }
+
+    // 3. Clinicians Collection
+    match /users/{userId} {
+      allow read: if true;
+      allow create: if isValidId(userId) && isValidClinician(request.resource.data);
+      allow update: if isValidId(userId) && isValidClinician(request.resource.data);
+      allow delete: if isValidId(userId);
+    }
+
+    // 4. System Settings Collection
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isValidId(settingId) && isValidSystemSettings(request.resource.data);
+    }
+
+    // 5. Activity Logs Collection
+    match /activity_logs/{logId} {
+      allow read: if true;
+      allow create: if isValidId(logId) && isValidActivityLog(request.resource.data);
+    }
+
+    // 6. Patient Versions Collection
+    match /patient_versions/{versionId} {
+      allow read: if true;
+      allow create: if isValidId(versionId) && isValidPatientVersion(request.resource.data);
+    }
+
+    // Type and Attribute Validations
+    function isValidPatient(data) {
+      return data.id is string && data.id.size() <= 128
+          && data.code is string && data.code.size() <= 128
+          && data.name is string && data.name.size() <= 2048
+          && data.diagnosis is string && data.diagnosis.size() <= 1024
+          && data.consultant is string && data.consultant.size() <= 1024
+          && data.treatment is string && data.treatment.size() <= 1024
+          && data.createdAt is string && data.createdAt.size() <= 128
+          && (!('age' in data) || (data.age is number || data.age is string))
+          && (!('sex' in data) || data.sex is string)
+          && (!('phone' in data) || data.phone is string)
+          && (!('route' in data) || data.route is string)
+          && (!('amount' in data) || data.amount is string)
+          && (!('sessionNo' in data) || data.sessionNo is number)
+          && (!('date' in data) || data.date is string)
+          && (!('improvement' in data) || data.improvement is string)
+          && (!('notes' in data) || data.notes is string)
+          && (!('submittedBy' in data) || data.submittedBy is string)
+          && (!('lastEditedBy' in data) || data.lastEditedBy is string)
+          && (!('followUps' in data) || data.followUps is list);
+    }
+
+    function isValidClinician(data) {
+      return data.username is string && data.username.size() <= 128
+          && data.fullName is string && data.fullName.size() <= 256
+          && data.role is string && (data.role == 'admin' || data.role == 'co-admin' || data.role == 'user');
+    }
+
+    function isValidSystemSettings(data) {
+      return (!('diagnoses' in data) || data.diagnoses is list)
+          && (!('routes' in data) || data.routes is list)
+          && (!('procedurePlaces' in data) || data.procedurePlaces is list)
+          && (!('consultants' in data) || data.consultants is list)
+          && (!('treatments' in data) || data.treatments is list)
+          && (!('recoveryStatuses' in data) || data.recoveryStatuses is list)
+          && (!('theme' in data) || data.theme is string);
+    }
+
+    function isValidActivityLog(data) {
+      return data.id is string && data.id.size() <= 128
+          && data.timestamp is string && data.timestamp.size() <= 128
+          && data.username is string && data.username.size() <= 128
+          && data.action is string && data.action.size() <= 128
+          && data.details is string && data.details.size() <= 4096
+          && (!('severity' in data) || (data.severity is string && data.severity.size() <= 128));
+    }
+
+    function isValidPatientVersion(data) {
+      return data.id is string && data.id.size() <= 128
+          && data.patientId is string && data.patientId.size() <= 128
+          && data.version is number
+          && data.timestamp is string && data.timestamp.size() <= 128
+          && data.editedBy is string && data.editedBy.size() <= 128
+          && data.changeSummary is string && data.changeSummary.size() <= 1024
+          && data.patientData is map && isValidPatient(data.patientData);
+    }
+  }
+}

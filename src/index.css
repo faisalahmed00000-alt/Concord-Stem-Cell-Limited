@@ -1,0 +1,71 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;750&family=Space+Grotesk:wght@400;500;605;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Space Grotesk", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  
+  --shadow-glow-blue: 0 0 15px rgba(59, 130, 246, 0.15);
+  --shadow-glow-emerald: 0 0 15px rgba(16, 185, 129, 0.15);
+  --shadow-smooth: 0 10px 30px -10px rgba(0, 0, 0, 0.05);
+}
+
+@layer utilities {
+  /* Dynamic Gradients */
+  .gradient-clinical {
+    background: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%);
+  }
+  .gradient-warm {
+    background: linear-gradient(135deg, #f59e0b 0%, #e11d48 100%);
+  }
+  .gradient-clinical-dark {
+    background: linear-gradient(135deg, #1e1b4b 0%, #083344 100%);
+  }
+  .gradient-emerald-cyan {
+    background: linear-gradient(135deg, #059669 0%, #06b6d4 100%);
+  }
+  
+  /* Modern frosted-glass layouts */
+  .glassmorphism {
+    backdrop-filter: blur(12px);
+    background-color: rgba(255, 255, 255, 0.7);
+  }
+  .glassmorphism-dark {
+    backdrop-filter: blur(12px);
+    background-color: rgba(15, 23, 42, 0.7);
+  }
+
+  /* Micro transitions and custom scrolls */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(156, 163, 175, 0.25);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(156, 163, 175, 0.45);
+  }
+}
+
+/* Base style resets and beautiful typography defaults */
+body {
+  font-smoothing: antialiased;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+

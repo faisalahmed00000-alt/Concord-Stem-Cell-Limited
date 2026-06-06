@@ -1,0 +1,8 @@
+{
+  "name": "Concord Stem Cell  Record",
+  "description": "An end-to-end client-side cryptographically secure Electronic Health Records ledger for clinical patient cohorts, admissions, outcomes, and progress histories.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "diagnoses": [
+    "Migraine Specialist Protocol",
+    "Chronic Intractable Pain Syndrome",
+    "Osteoarthritis Secondary Arthropathy",
+    "Intervertebral Disc Herniation / Sciatica",
+    "Juvenile Rheumatoid & Fibromyalgia",
+    "Diabetic Sensory Polyneuropathy",
+    "Carpal Tunnel Decompression Followup",
+    "Complex Regional Pain Syndrome (CRPS)"
+  ],
+  "routes": [
+    "Intravenous (IV) Infusion",
+    "Intramuscular (IM) Injection",
+    "Oral Administration (PO)",
+    "Subcutaneous (SC) Injection",
+    "Transdermal Patch / Topical Gel",
+    "Inhalation / Nebulizer Protocol"
+  ],
+  "procedurePlaces": [
+    "Operating Room A",
+    "Minor Procedure Suite",
+    "Outpatient Treatment Bay 3",
+    "Infusion Lounge"
+  ],
+  "consultants": [
+    "Dr. Sarah Jenkins, MD",
+    "Dr. Alan Vance, MD",
+    "Dr. Jordan Carter, MD",
+    "Dr. Eleanor Vance, MD"
+  ],
+  "treatments": [
+    "Excedrin IV Dosing Protocol",
+    "Neuromuscular Blockade Protocol",
+    "Exosome Infusion Therapy",
+    "Standard Stem Cell Intravenous Protocol",
+    "Targeted Spine Joint Prolotherapy",
+    "Regenerative Joint Infiltration",
+    "Myofascial Trigger Point Injection"
+  ],
+  "recoveryStatuses": [
+    "Stable / Maintenance Protocol",
+    "Significantly Improved - Ready for Discharge Protocol",
+    "Gradual Improvement Observed",
+    "No Changes (Symptomatic Plateau)",
+    "Minor Flareups / Temporary Regression",
+    "Deteriorated / Urgent Re-assessment Required"
+  ],
+  "theme": "blue",
+  "appName": "Concord Stem Cell MSC Record",
+  "companyLogo": "/src/assets/images/concord_logo_1780689503864.png"
+}

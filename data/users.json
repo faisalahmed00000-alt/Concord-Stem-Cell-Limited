@@ -1,0 +1,32 @@
+{
+  "toticellmedicalofficer@gmail.com": {
+    "username": "toticellmedicalofficer@gmail.com",
+    "fullName": "Dr Md Faisal Ahmed",
+    "specialty": "Medical Officer",
+    "salt": "kUF3GSOTcHPt2o6lyZPb0A==",
+    "verifierHash": "jD17K48xZfsWq8+4y1fxwhD08PUX7FY0Z4CK+tY9bs4=",
+    "securityQuestion": "What was the name of your first clinical facility?",
+    "recoveryPayload": {
+      "ciphertext": "xyZ/tcBraFs+8xhoZa/7fIGEOVTrqQA7",
+      "iv": "onJpXMboYhy6HxPR"
+    },
+    "recoveryHint": "",
+    "createdAt": "2026-06-02T22:37:29.184Z",
+    "role": "admin"
+  },
+  "faisalahmed00000@gmail.com": {
+    "username": "faisalahmed00000@gmail.com",
+    "fullName": "Dr Md Faisal Ahmed",
+    "specialty": "Medical Officer",
+    "salt": "g/4UWZkIIO2/pJiE3MxpOA==",
+    "verifierHash": "dXANursT19w4heUVcx1cnEEX5HgZCfnojf1OQ04fe2Y=",
+    "securityQuestion": "What was the name of your first clinical facility?",
+    "recoveryPayload": {
+      "ciphertext": "mYa+1W0lWkYJR/gMTOf9m081liefXcFY",
+      "iv": "SRchC79aGZkvSx82"
+    },
+    "recoveryHint": "",
+    "createdAt": "2026-06-02T23:15:17.225Z",
+    "role": "admin"
+  }
+}
