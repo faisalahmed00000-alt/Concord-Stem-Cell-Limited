@@ -123,6 +123,26 @@ export default function SettingsPanel({
   const [corpIdentityOpen, setCorpIdentityOpen] = useState(true);
   const [formHeadlinesOpen, setFormHeadlinesOpen] = useState(true);
   const [inputLabelsOpen, setInputLabelsOpen] = useState(true);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const isMobile = window.innerWidth < 1024;
+      if (isMobile) {
+        setThemeOpen(false);
+        setBgOpen(false);
+        setConsultantsOpen(false);
+        setDiagnosesOpen(false);
+        setRoutesOpen(false);
+        setProcedurePlacesOpen(false);
+        setRecoveryStatusesOpen(false);
+        setTreatmentsOpen(false);
+        setMandatoryOpen(false);
+        setCorpIdentityOpen(false);
+        setFormHeadlinesOpen(false);
+        setInputLabelsOpen(false);
+      }
+    }
+  }, []);
   
   // Google Sheets integration states
   const [showSheetsPortal, setShowSheetsPortal] = useState(false);
@@ -1594,7 +1614,7 @@ export default function SettingsPanel({
       </div>
 
       {/* Navigation Segmented Tabs bar */}
-      <div className={`border rounded-2xl p-1.5 flex flex-wrap gap-1.5 ${
+      <div className={`border rounded-2xl p-1.5 flex overflow-x-auto flex-nowrap md:flex-wrap gap-1.5 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] ${
         isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-[#E5E9EE]'
       }`}>
         {userRole !== 'user' && (
@@ -1602,7 +1622,7 @@ export default function SettingsPanel({
             <button
               type="button"
               onClick={() => setActiveSegment('aesthetics')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer shrink-0 ${
                 activeSegment === 'aesthetics'
                   ? (isDark ? 'bg-slate-800 text-slate-100 shadow-sm' : 'bg-white text-slate-800 shadow-sm border border-slate-200/50')
                   : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800')
@@ -1614,7 +1634,7 @@ export default function SettingsPanel({
             <button
               type="button"
               onClick={() => setActiveSegment('formKeys')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer shrink-0 ${
                 activeSegment === 'formKeys'
                   ? (isDark ? 'bg-slate-800 text-slate-100 shadow-sm' : 'bg-white text-slate-800 shadow-sm border border-slate-200/50')
                   : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800')
@@ -1626,7 +1646,7 @@ export default function SettingsPanel({
             <button
               type="button"
               onClick={() => setActiveSegment('registries')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer shrink-0 ${
                 activeSegment === 'registries'
                   ? (isDark ? 'bg-slate-800 text-slate-100 shadow-sm' : 'bg-white text-slate-800 shadow-sm border border-slate-200/50')
                   : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800')
@@ -1638,7 +1658,7 @@ export default function SettingsPanel({
             <button
               type="button"
               onClick={() => setActiveSegment('integration')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer shrink-0 ${
                 activeSegment === 'integration'
                   ? (isDark ? 'bg-slate-800 text-slate-100 shadow-sm' : 'bg-white text-slate-800 shadow-sm border border-slate-200/50')
                   : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800')
@@ -1651,7 +1671,7 @@ export default function SettingsPanel({
             <button
               type="button"
               onClick={() => setActiveSegment('printShare')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer shrink-0 ${
                 activeSegment === 'printShare'
                   ? (isDark ? 'bg-slate-800 text-slate-100 shadow-sm' : 'bg-white text-slate-800 shadow-sm border border-slate-200/50')
                   : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800')
@@ -1663,9 +1683,9 @@ export default function SettingsPanel({
             <button
               type="button"
               onClick={() => setActiveSegment('auditLogs')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer shrink-0 ${
                 activeSegment === 'auditLogs'
-                  ? (isDark ? 'bg-slate-800 text-slate-100 shadow-sm border border-slate-700/50' : 'bg-white text-slate-800 shadow-sm border border-slate-200/50')
+                  ? (isDark ? 'bg-slate-800 text-slate-100 shadow-sm border border-slate-705/50' : 'bg-white text-slate-800 shadow-sm border border-slate-200/50')
                   : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800')
               }`}
             >
@@ -1678,7 +1698,7 @@ export default function SettingsPanel({
         <button
           type="button"
           onClick={() => setActiveSegment('userDetails')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer shrink-0 ${
             activeSegment === 'userDetails'
               ? (isDark ? 'bg-slate-800 text-slate-100 shadow-sm' : 'bg-white text-slate-800 shadow-sm border border-slate-200/50')
               : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800')
@@ -1693,7 +1713,7 @@ export default function SettingsPanel({
             <button
               type="button"
               onClick={() => setActiveSegment('users')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer shrink-0 ${
                 activeSegment === 'users'
                   ? (isDark ? 'bg-slate-800 text-slate-100 shadow-sm' : 'bg-white text-slate-800 shadow-sm border border-slate-200/50')
                   : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800')
@@ -1705,7 +1725,7 @@ export default function SettingsPanel({
             <button
               type="button"
               onClick={() => setActiveSegment('adminAuditLog')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer shrink-0 ${
                 activeSegment === 'adminAuditLog'
                   ? (isDark ? 'bg-slate-800 text-slate-100 shadow-sm' : 'bg-white text-slate-800 shadow-sm border border-slate-200/50')
                   : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800')
@@ -4180,7 +4200,7 @@ export default function SettingsPanel({
                   type="button"
                   onClick={() => {
                     const filteredLogs = logs.filter(log => {
-                      const matchesAction = ['PATIENT_DELETE', 'PATIENT_UPDATE', 'PATIENT_CREATE'].includes(log.action);
+                      const matchesAction = ['PATIENT_DELETE', 'PATIENT_IMPORT', 'PATIENT_UPDATE', 'PATIENT_CREATE'].includes(log.action);
                       return matchesAction;
                     });
                     const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(
@@ -4204,27 +4224,34 @@ export default function SettingsPanel({
             </div>
 
             {/* Quick Stats Banner based on lastEditedBy */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pb-2">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 pb-2">
               <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-955 border-slate-805/60' : 'bg-slate-50/40 border-slate-100'}`}>
                 <span className="block text-[9px] font-extrabold text-slate-400 uppercase tracking-widest">Deletions Conducted</span>
                 <span className="block text-xl font-black mt-1 text-rose-500 font-mono">
                   {logs.filter(l => l.action === 'PATIENT_DELETE').length}
                 </span>
-                <span className="block text-[8px] text-slate-500 mt-0.5">Irreversible removal logs retained</span>
+                <span className="block text-[8px] text-slate-500 mt-0.5">Purges from ledger</span>
+              </div>
+              <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-955 border-slate-805/60' : 'bg-slate-50/40 border-slate-100'}`}>
+                <span className="block text-[9px] font-extrabold text-slate-400 uppercase tracking-widest">Bulk Imports Added</span>
+                <span className="block text-xl font-black mt-1 text-indigo-500 font-mono">
+                  {logs.filter(l => l.action === 'PATIENT_IMPORT').length}
+                </span>
+                <span className="block text-[8px] text-slate-500 mt-0.5">Database ingestions</span>
               </div>
               <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-955 border-slate-805/60' : 'bg-slate-50/40 border-slate-100'}`}>
                 <span className="block text-[9px] font-extrabold text-slate-400 uppercase tracking-widest">Major Record Updates</span>
                 <span className="block text-xl font-black mt-1 text-amber-500 font-mono">
                   {logs.filter(l => l.action === 'PATIENT_UPDATE').length}
                 </span>
-                <span className="block text-[8px] text-slate-500 mt-0.5">State adjustments saved</span>
+                <span className="block text-[8px] text-slate-500 mt-0.5">State alterations saved</span>
               </div>
               <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-955 border-slate-805/60' : 'bg-slate-50/40 border-slate-100'}`}>
-                <span className="block text-[9px] font-extrabold text-slate-400 uppercase tracking-widest">Clinical Authors Listed</span>
+                <span className="block text-[9px] font-extrabold text-slate-400 uppercase tracking-widest">Clinical Authors</span>
                 <span className="block text-xl font-black mt-1 text-blue-500 font-mono">
-                  {new Set(logs.filter(l => ['PATIENT_DELETE', 'PATIENT_UPDATE'].includes(l.action)).map(l => l.username)).size}
+                  {new Set(logs.filter(l => ['PATIENT_DELETE', 'PATIENT_UPDATE', 'PATIENT_IMPORT'].includes(l.action)).map(l => l.username)).size}
                 </span>
-                <span className="block text-[8px] text-slate-500 mt-0.5">Distinct editors authenticated</span>
+                <span className="block text-[8px] text-slate-500 mt-0.5">Unique active accounts</span>
               </div>
             </div>
 
@@ -4244,7 +4271,7 @@ export default function SettingsPanel({
                   isDark ? 'divide-slate-850 bg-slate-950/5' : 'divide-slate-100 bg-white'
                 }`}>
                   {(() => {
-                    const relevantActions = ['PATIENT_DELETE', 'PATIENT_UPDATE', 'PATIENT_CREATE'];
+                    const relevantActions = ['PATIENT_DELETE', 'PATIENT_IMPORT', 'PATIENT_UPDATE', 'PATIENT_CREATE'];
                     const filteredList = logs
                       .filter(log => relevantActions.includes(log.action))
                       .filter(log => {
@@ -4281,6 +4308,7 @@ export default function SettingsPanel({
                             <div className="mt-1.5 shrink-0">
                               <span className={`w-2.5 h-2.5 rounded-full block ${
                                 log.action === 'PATIENT_DELETE' ? 'bg-rose-500 ring-4 ring-rose-500/10' :
+                                log.action === 'PATIENT_IMPORT' ? 'bg-indigo-500 ring-4 ring-indigo-500/10' :
                                 log.action === 'PATIENT_UPDATE' ? 'bg-amber-500 ring-4 ring-amber-500/10' :
                                 'bg-emerald-500 ring-4 ring-emerald-500/10'
                               }`} />
@@ -4290,10 +4318,12 @@ export default function SettingsPanel({
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className={`font-black uppercase tracking-wider text-[9px] px-2 py-0.5 rounded-md border ${
                                   log.action === 'PATIENT_DELETE' ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' :
+                                  log.action === 'PATIENT_IMPORT' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :
                                   log.action === 'PATIENT_UPDATE' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
                                   'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                                 }`}>
                                   {log.action === 'PATIENT_DELETE' ? 'Patient Deleted' :
+                                   log.action === 'PATIENT_IMPORT' ? 'Bulk Import' :
                                    log.action === 'PATIENT_UPDATE' ? 'Record Edited' :
                                    'Patient Created'}
                                 </span>

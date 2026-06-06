@@ -916,7 +916,7 @@ app.post('/api/patients/bulk', async (req, res) => {
 
   // Identify who is performing this sync
   const firstWithEditor = incomingPatients.find((p: any) => p.lastEditedBy || p.submittedBy);
-  const editorName = firstWithEditor ? (firstWithEditor.lastEditedBy || firstWithEditor.submittedBy) : 'system';
+  const editorName = (req.query.editor as string) || (firstWithEditor ? (firstWithEditor.lastEditedBy || firstWithEditor.submittedBy) : 'system');
 
   // Perform diff checks and save versions
   const versionsRaw = readJSON(PATIENT_VERSIONS_FILE);

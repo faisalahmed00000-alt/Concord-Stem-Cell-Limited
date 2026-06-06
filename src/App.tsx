@@ -394,7 +394,8 @@ export default function App() {
       secureStorage.setItem('secure_ledger_patients', JSON.stringify(encrypted));
 
       // Centralized sync to server
-      await fetch('/api/patients/bulk', {
+      const editorParam = session ? `?editor=${encodeURIComponent(session.username)}` : '';
+      await fetch(`/api/patients/bulk${editorParam}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedPatients)
@@ -438,6 +439,21 @@ export default function App() {
     const updatedPatients = overwrite ? cleanImport : [...cleanImport, ...patients];
     setPatients(updatedPatients);
     await encryptAndPersistPatients(updatedPatients, session.key);
+
+    try {
+      await fetch('/api/logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: creatorName,
+          action: 'PATIENT_IMPORT',
+          details: `Conducted Bulk Import: Integrated ${importedList.length} patient records (Overwrite mode: ${overwrite ? 'Enabled' : 'Disabled'})`,
+          severity: 'info'
+        })
+      });
+    } catch (logErr) {
+      console.error('Failed to log bulk import:', logErr);
+    }
   };
 
   // Add follow-up logic
@@ -495,9 +511,27 @@ export default function App() {
 
     if (!confirmPurge) return;
 
+    const targetPatient = patients.find((p) => p.id === patientId);
     const updatedPatients = patients.filter((p) => p.id !== patientId);
     setPatients(updatedPatients);
     await encryptAndPersistPatients(updatedPatients, session.key);
+
+    if (targetPatient) {
+      try {
+        await fetch('/api/logs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: session.username,
+            action: 'PATIENT_DELETE',
+            details: `Irrevocably deleted Patient Record for ${targetPatient.name} (${targetPatient.code || 'ID: ' + targetPatient.id})`,
+            severity: 'warn'
+          })
+        });
+      } catch (logErr) {
+        console.error('Failed to log patient delete:', logErr);
+      }
+    }
   };
 
   // Quick Action: Route from List to Follow-up Form
