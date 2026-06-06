@@ -3819,38 +3819,21 @@ export default function SettingsPanel({
 
           {/* Administrative Join Gatekeeper Policy Segment */}
           <div className={`p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
-            settings.disableAdminJoining
-              ? (isDark ? 'bg-amber-500/5 border-amber-900/30' : 'bg-amber-50/35 border-amber-200/70')
-              : (isDark ? 'bg-slate-950/20 border-slate-800' : 'bg-slate-50/50 border-slate-200/60')
+            isDark ? 'bg-slate-950/20 border-slate-800' : 'bg-slate-50/50 border-slate-200/60'
           }`}>
             <div className="space-y-1">
-              <h4 className={`text-xs font-extrabold uppercase tracking-wider ${isDark ? 'text-amber-400' : 'text-slate-800'}`}>
-                Administrative Join Gatekeeper
+              <h4 className={`text-xs font-extrabold uppercase tracking-wider ${isDark ? 'text-blue-400' : 'text-slate-800'}`}>
+                Administrative Registration Policy
               </h4>
               <p className="text-[10px] text-slate-400 leading-relaxed font-medium">
-                When switched on, further people can not join as admin during registration. Clinicians will register as Standard Users and need explicit permission from you (Pending Approval) before they can access the records.
+                The current system configuration enforces that anyone who registers/creates an ID joins automatically with full Admin Partner privileges. Account reviews and manual clinician approvals are disabled.
               </p>
             </div>
             
-            <button
-              type="button"
-              id="turn_off_to_join_as_admin_button"
-              onClick={() => {
-                const updated = {
-                  ...settings,
-                  disableAdminJoining: !settings.disableAdminJoining
-                };
-                onUpdateSettings(updated);
-              }}
-              className={`px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer border shadow-xs inline-flex items-center gap-2.5 shrink-0 ${
-                settings.disableAdminJoining 
-                  ? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-600' 
-                  : (isDark ? 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-755' : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200')
-              }`}
-            >
-              <span>{settings.disableAdminJoining ? "Turn off to join as admin: ON" : "Turn off to join as admin: OFF"}</span>
-              <span className={`w-2.5 h-2.5 rounded-full ${settings.disableAdminJoining ? 'bg-white animate-pulse' : 'bg-slate-300 dark:bg-slate-600'}`} />
-            </button>
+            <span className="px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase border border-emerald-500/25 bg-emerald-500/10 text-emerald-500 inline-flex items-center gap-1.5 shrink-0 self-start sm:self-auto font-sans">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Direct Admin Joining Enabled
+            </span>
           </div>
 
           {isUsersLoading ? (

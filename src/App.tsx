@@ -585,15 +585,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* Diagnostic Screen Size Indicator Badge */}
-          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-2xl border text-xs font-mono font-bold uppercase tracking-wider shadow-xs select-none bg-indigo-500/10 border-indigo-500/15 text-indigo-400">
-            <Monitor className="h-4 w-4 shrink-0 text-indigo-500 animate-pulse" />
-            <span className="font-extrabold text-[12px] text-slate-400">Screen:</span>
-            <span className="font-black text-[12px] text-indigo-400">
-              {screenSize.desc}
-            </span>
-            <span className="text-slate-500 text-[11px] ml-0.5 font-mono">({screenSize.width} × {screenSize.height}px)</span>
-          </div>
+
 
           <div className="flex items-center gap-2.5">
             {/* Logout actions */}

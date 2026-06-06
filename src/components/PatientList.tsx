@@ -54,6 +54,7 @@ import { secureStorage } from '../utils/storage';
 import { FormSettings, ThemeOption } from '../types/settings';
 import * as XLSX from 'xlsx';
 import PrintProfileModal from './PrintProfileModal';
+import { MultiSelectDropdown } from './PatientForm';
 import { 
   initAuth, 
   googleSignIn, 
@@ -356,9 +357,9 @@ export default function PatientList({
     const patient = patients.find(p => p.id === patientId);
     if (!patient) return;
 
-    const finalConsultant = sessionConsultant === 'Other' ? sessionConsultantCustom.trim() : sessionConsultant;
+    const finalConsultant = sessionConsultant.trim();
     const finalTreatment = sessionTreatment === 'Other' ? sessionTreatmentCustom.trim() : sessionTreatment;
-    const finalRoute = sessionRoute === 'Other' ? sessionRouteCustom.trim() : sessionRoute;
+    const finalRoute = sessionRoute.trim();
     const finalProcedurePlace = sessionProcedurePlace === 'Other' ? sessionProcedurePlaceCustom.trim() : sessionProcedurePlace;
 
     if (!finalConsultant) {
@@ -3135,36 +3136,15 @@ AES-256 Secured Clinical Client-Side Dispatch`;
                                   {/* Consultant */}
                                   <div className="sm:col-span-2">
                                     <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">{labelConsultant} *</label>
-                                    <select
+                                    <MultiSelectDropdown
+                                      id="session_patient_consultant"
+                                      label={labelConsultant}
+                                      options={settings.consultants}
                                       value={sessionConsultant}
-                                      onChange={(e) => {
-                                        setSessionConsultant(e.target.value);
-                                        if (e.target.value !== 'Other') {
-                                          setSessionConsultantCustom('');
-                                        }
-                                      }}
-                                      className={`w-full rounded-xl border p-2.5 transition-all ${
-                                        isDark ? 'bg-slate-950 border-slate-800 text-slate-200 focus:border-blue-500' : 'bg-white border-slate-200 focus:border-blue-500'
-                                      }`}
-                                    >
-                                      <option value="">-- Choose attending practitioner --</option>
-                                      {settings.consultants.map((con) => (
-                                        <option key={con} value={con}>{con}</option>
-                                      ))}
-                                      <option value="Other">Custom Specialist...</option>
-                                    </select>
-
-                                    {sessionConsultant === 'Other' && (
-                                      <input
-                                        type="text"
-                                        placeholder="Specify practitioner name..."
-                                        value={sessionConsultantCustom}
-                                        onChange={(e) => setSessionConsultantCustom(e.target.value)}
-                                        className={`w-full mt-2 rounded-xl border p-2.5 transition-all ${
-                                          isDark ? 'bg-slate-950 border-slate-800 text-slate-202' : 'bg-white border-slate-203'
-                                        }`}
-                                      />
-                                    )}
+                                      onChange={setSessionConsultant}
+                                      placeholder="-- Choose attending practitioners --"
+                                      isDark={isDark}
+                                    />
                                   </div>
 
                                   {/* Treatment protocol */}
@@ -3205,36 +3185,15 @@ AES-256 Secured Clinical Client-Side Dispatch`;
                                   {/* Route */}
                                   <div>
                                     <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">{labelRoute} *</label>
-                                    <select
+                                    <MultiSelectDropdown
+                                      id="session_patient_route"
+                                      label={labelRoute}
+                                      options={settings.routes}
                                       value={sessionRoute}
-                                      onChange={(e) => {
-                                        setSessionRoute(e.target.value);
-                                        if (e.target.value !== 'Other') {
-                                          setSessionRouteCustom('');
-                                        }
-                                      }}
-                                      className={`w-full rounded-xl border p-2.5 transition-all ${
-                                        isDark ? 'bg-slate-950 border-slate-800 text-slate-200 focus:border-blue-500' : 'bg-white border-slate-200 focus:border-blue-500'
-                                      }`}
-                                    >
-                                      <option value="">-- Choose administration route --</option>
-                                      {settings.routes.map((r) => (
-                                        <option key={r} value={r}>{r}</option>
-                                      ))}
-                                      <option value="Other">Custom Infusion Pathway...</option>
-                                    </select>
-
-                                    {sessionRoute === 'Other' && (
-                                      <input
-                                        type="text"
-                                        placeholder="Enter custom path route..."
-                                        value={sessionRouteCustom}
-                                        onChange={(e) => setSessionRouteCustom(e.target.value)}
-                                        className={`w-full mt-2 rounded-xl border p-2.5 transition-all ${
-                                          isDark ? 'bg-slate-950 border-slate-800 text-slate-202' : 'bg-white border-slate-203'
-                                        }`}
-                                      />
-                                    )}
+                                      onChange={setSessionRoute}
+                                      placeholder="-- Choose administration routes --"
+                                      isDark={isDark}
+                                    />
                                   </div>
 
                                   {/* Amount */}
@@ -3859,28 +3818,28 @@ AES-256 Secured Clinical Client-Side Dispatch`;
 
               <div>
                 <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Clinical Diagnosis</label>
-                <select
+                <MultiSelectDropdown
+                  id="edit_patient_diagnosis"
+                  label="Clinical Diagnosis"
+                  options={settings.diagnoses}
                   value={editDiagnosis}
-                  onChange={(e) => setEditDiagnosis(e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-xl outline-hidden focus:ring-1 focus:ring-blue-500 ${isDark ? 'bg-slate-950 border-slate-800 text-slate-105 font-bold' : 'bg-white border-slate-200 text-slate-900 font-bold'}`}
-                >
-                  {settings.diagnoses.map((diag) => (
-                    <option key={diag} value={diag}>{diag}</option>
-                  ))}
-                </select>
+                  onChange={setEditDiagnosis}
+                  placeholder="-- Select Standard Clinical Diagnoses --"
+                  isDark={isDark}
+                />
               </div>
 
               <div>
                 <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Clinical Consultant</label>
-                <select
+                <MultiSelectDropdown
+                  id="edit_patient_consultant"
+                  label="Clinical Consultant"
+                  options={settings.consultants}
                   value={editConsultant}
-                  onChange={(e) => setEditConsultant(e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-xl outline-hidden focus:ring-1 focus:ring-blue-500 ${isDark ? 'bg-slate-950 border-slate-800 text-slate-105 font-bold' : 'bg-white border-slate-200 text-slate-900 font-bold'}`}
-                >
-                  {settings.consultants.map((con) => (
-                    <option key={con} value={con}>{con}</option>
-                  ))}
-                </select>
+                  onChange={setEditConsultant}
+                  placeholder="-- Select Registered Consultants --"
+                  isDark={isDark}
+                />
               </div>
 
               <div>
@@ -3898,15 +3857,15 @@ AES-256 Secured Clinical Client-Side Dispatch`;
 
               <div>
                 <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Route of Administration</label>
-                <select
+                <MultiSelectDropdown
+                  id="edit_patient_route"
+                  label="Route of Administration"
+                  options={settings.routes}
                   value={editRoute}
-                  onChange={(e) => setEditRoute(e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-xl outline-hidden focus:ring-1 focus:ring-blue-500 ${isDark ? 'bg-slate-950 border-slate-800 text-slate-105 font-bold' : 'bg-white border-slate-200 text-slate-900 font-bold'}`}
-                >
-                  {settings.routes.map((r) => (
-                    <option key={r} value={r}>{r}</option>
-                  ))}
-                </select>
+                  onChange={setEditRoute}
+                  placeholder="-- Select Administration Routes --"
+                  isDark={isDark}
+                />
               </div>
 
               <div>
@@ -4177,6 +4136,19 @@ AES-256 Secured Clinical Client-Side Dispatch`;
                             />
                           </div>
                           <div className="sm:col-span-2">
+                            <label className="block text-[9px] font-bold uppercase text-slate-400 mb-1">Procedure Place</label>
+                            <input
+                              type="text"
+                              value={session.procedurePlace || ''}
+                              onChange={(e) => {
+                                const newSessions = [...editTreatmentSessions];
+                                newSessions[index] = { ...newSessions[index], procedurePlace: e.target.value };
+                                setEditTreatmentSessions(newSessions);
+                              }}
+                              className={`w-full px-2 py-1 text-[11px] border rounded-lg ${isDark ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-slate-250 text-slate-900'}`}
+                            />
+                          </div>
+                          <div className="sm:col-span-4">
                             <label className="block text-[9px] font-bold uppercase text-slate-400 mb-1">Protocol Treatment</label>
                             <input
                               type="text"

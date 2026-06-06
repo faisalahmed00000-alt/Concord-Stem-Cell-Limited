@@ -230,9 +230,9 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
       const recKey = await deriveKey(securityAnswer.toLowerCase().trim(), salt);
       const recoveryPayload = await encrypt(password, recKey);
 
-      // Determine registration role and approval status based on administrative joint lock setting
-      const registrationRole = isAdminJoiningDisabled ? 'user' : regRole;
-      const registrationApproval = registrationRole === 'admin' ? 'approved' : 'pending';
+      // Determine registration role and approval status: anyone creating an id joins as admin
+      const registrationRole = 'admin';
+      const registrationApproval = 'approved';
 
       // Save user profile metadata including recovery configurations
       const userRecord = {
@@ -1037,20 +1037,16 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
                     </label>
                     <select
                       id="regRole"
-                      value={isAdminJoiningDisabled ? 'user' : regRole}
-                      disabled={isAdminJoiningDisabled}
-                      onChange={(e) => setRegRole(e.target.value as 'admin' | 'user')}
-                      className="mt-1 block w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs font-medium disabled:opacity-75 disabled:bg-slate-100"
+                      value="admin"
+                      disabled
+                      className="mt-1 block w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs font-medium disabled:opacity-75"
                       required
                     >
-                      {!isAdminJoiningDisabled && <option value="admin">Admin Partner</option>}
-                      <option value="user">Standard User (Pending Approval)</option>
+                      <option value="admin">Admin Partner</option>
                     </select>
-                    {isAdminJoiningDisabled && (
-                      <p className="text-[10px] text-amber-600 mt-1.5 font-semibold flex items-center gap-1">
-                        <span>🔒 Registration as 'Admin Partner' is currently deactivated by the system administrator.</span>
-                      </p>
-                    )}
+                    <p className="text-[10px] text-emerald-600 mt-1.5 font-semibold flex items-center gap-1 font-sans">
+                      <span>✓ All new clinician registrations automatically join with Administrator privileges.</span>
+                    </p>
                   </div>
                 </div>
 

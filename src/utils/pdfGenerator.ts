@@ -509,7 +509,33 @@ export const generatePatientPDF = (
         const sessionsToRender = (patient.treatmentSessions || []).slice().reverse();
 
         sessionsToRender.forEach((s, idx) => {
-          const cardH = 28;
+          // Wrap all text fields defensively to prevent overflow
+          const practitionerText = `Practitioner: ${s.consultant}`;
+          const practitionerLines = doc.splitTextToSize(practitionerText, (contentW / 2) - 10);
+
+          const protocolText = `Protocol: ${s.treatment}`;
+          const protocolLines = doc.splitTextToSize(protocolText, (contentW / 2) - 10);
+
+          const dosageText = `Dosage: ${s.amount}`;
+          const dosageLines = doc.splitTextToSize(dosageText, (contentW / 2) - 10);
+
+          const routeText = `Route: ${s.route}`;
+          const routeLines = doc.splitTextToSize(routeText, (contentW / 2) - 10);
+
+          const procedurePlaceText = `Procedure Place: ${s.procedurePlace || 'N/A'}`;
+          const procedurePlaceLines = doc.splitTextToSize(procedurePlaceText, (contentW / 2) - 10);
+
+          const sessionNotesText = s.notes || 'No extensive session remarks documented.';
+          const notesLines = doc.splitTextToSize(sessionNotesText, contentW - 12);
+          const truncatedNotesLines = notesLines.slice(0, 3); // Allow up to 3 lines of notes gracefully
+
+          // Calculate heights of left and right columns
+          const leftColHeight = 5 + (practitionerLines.length * 3.8);
+          const rightColHeight = (protocolLines.length * 3.8) + (dosageLines.length * 3.8) + (routeLines.length * 3.8) + (procedurePlaceLines.length * 3.8) + 4;
+
+          const topHeight = Math.max(leftColHeight, rightColHeight, 10);
+          const notesStartRelY = topHeight + 5;
+          const cardH = notesStartRelY + (truncatedNotesLines.length * 3.8) + 3;
 
           // If card overflows page budget, start a fresh page
           if (currentY + cardH > 265) {
@@ -540,28 +566,31 @@ export const generatePatientPDF = (
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(7.5);
           doc.setTextColor('#475569');
-          doc.text(`Practitioner: ${s.consultant}`, margin + 5, itemY + 10);
+          doc.text(practitionerLines, margin + 5, itemY + 9);
 
-          // Col 2: Protocol, Dose & Route
+           // Col 2: Protocol, Dosage, Route & Procedure Place
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(7.5);
           doc.setTextColor('#1e293b');
-          doc.text(`Protocol: ${s.treatment}`, margin + (contentW / 2) + 5, itemY + 5);
+          doc.text(protocolLines, margin + (contentW / 2) + 5, itemY + 5);
 
           doc.setFont('helvetica', 'normal');
           doc.setFontSize(7.5);
           doc.setTextColor('#475569');
-          doc.text(`Dose & Route: ${s.amount} (${s.route})`, margin + (contentW / 2) + 5, itemY + 10);
+          const dosageY = itemY + 5 + (protocolLines.length * 3.8);
+          doc.text(dosageLines, margin + (contentW / 2) + 5, dosageY);
+
+          const routeY = dosageY + (dosageLines.length * 3.8);
+          doc.text(routeLines, margin + (contentW / 2) + 5, routeY);
+
+          const procedurePlaceY = routeY + (routeLines.length * 3.8);
+          doc.text(procedurePlaceLines, margin + (contentW / 2) + 5, procedurePlaceY);
 
           // Notes
           doc.setFont('helvetica', 'normal');
           doc.setFontSize(7.5);
           doc.setTextColor('#334155');
-          
-          const sessionNotesText = s.notes || 'No extensive session remarks documented.';
-          const notesLines = doc.splitTextToSize(sessionNotesText, contentW - 12);
-          const truncatedNotesLines = notesLines.slice(0, 2);
-          doc.text(truncatedNotesLines, margin + 5, itemY + 17);
+          doc.text(truncatedNotesLines, margin + 5, itemY + notesStartRelY);
         });
       }
     }

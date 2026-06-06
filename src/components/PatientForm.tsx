@@ -1,7 +1,156 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { User, ClipboardList, Shield, Plus, RefreshCw, Calendar, Phone, Hash, Paperclip, Trash2, Upload, MapPin } from 'lucide-react';
 import { Patient, PatientAttachment } from '../types/patient';
 import { FormSettings, ThemeOption } from '../types/settings';
+
+interface MultiSelectDropdownProps {
+  id?: string;
+  label: string;
+  options: string[];
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  isDark: boolean;
+  required?: boolean;
+  activeTheme?: any;
+}
+
+export function MultiSelectDropdown({
+  id,
+  label,
+  options,
+  value,
+  onChange,
+  placeholder,
+  isDark,
+  required = false,
+  activeTheme
+}: MultiSelectDropdownProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  const selectedItems = value 
+    ? value.split(', ').map(x => x.trim()).filter(Boolean)
+    : [];
+
+  const handleToggleOption = (option: string) => {
+    let next: string[];
+    if (selectedItems.includes(option)) {
+      next = selectedItems.filter(item => item !== option);
+    } else {
+      next = [...selectedItems, option];
+    }
+    onChange(next.join(', '));
+  };
+
+  const handleAddCustom = (customText: string) => {
+    const trimmed = customText.trim();
+    if (!trimmed) return;
+    if (!selectedItems.includes(trimmed)) {
+      onChange([...selectedItems, trimmed].join(', '));
+    }
+  };
+
+  const [customInput, setCustomInput] = useState('');
+
+  return (
+    <div ref={containerRef} className="relative w-full" id={id}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full px-3.5 py-2.5 border rounded-xl text-xs font-semibold text-left flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-slate-400 cursor-pointer transition-all ${
+          isDark 
+            ? 'bg-slate-955 border-slate-805/60 text-slate-105' 
+            : 'bg-white border-slate-201 text-slate-950'
+        }`}
+      >
+        <span className="truncate">
+          {selectedItems.length > 0 
+            ? selectedItems.join(', ') 
+            : placeholder}
+        </span>
+        <span className="pointer-events-none ml-2">
+          <svg className="h-4 w-4 text-slate-450" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+          </svg>
+        </span>
+      </button>
+
+      {isOpen && (
+        <div className={`absolute z-50 mt-1.5 w-full max-h-64 overflow-y-auto rounded-xl border p-2 shadow-xl ${
+          isDark 
+            ? 'bg-slate-955 border-slate-805 text-slate-105 shadow-black/80' 
+            : 'bg-white border-slate-201 text-slate-800 shadow-slate-200/80'
+        }`}>
+          <div className="space-y-1">
+            {options.map((option) => {
+              const isSelected = selectedItems.includes(option);
+              return (
+                <label
+                  key={option}
+                  className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer transition-colors ${
+                    isDark ? 'hover:bg-slate-900/60 text-slate-200' : 'hover:bg-slate-50 text-slate-700'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => handleToggleOption(option)}
+                    className="h-3.5 w-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 accent-indigo-500 cursor-pointer"
+                  />
+                  <span className="truncate">{option}</span>
+                </label>
+              );
+            })}
+          </div>
+
+          <div className={`mt-2 pt-2 border-t flex gap-1.5 ${isDark ? 'border-slate-850' : 'border-slate-100'}`}>
+            <input
+              type="text"
+              placeholder="Add other custom..."
+              value={customInput}
+              onChange={(e) => setCustomInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleAddCustom(customInput);
+                  setCustomInput('');
+                }
+              }}
+              className={`block w-full px-2.5 py-1.5 border rounded-lg text-[11px] font-medium focus:outline-none focus:ring-1 focus:ring-slate-400 ${
+                isDark ? 'bg-slate-900 border-slate-800 text-slate-100 placeholder-slate-600' : 'bg-slate-50 border-slate-200 text-slate-900'
+              }`}
+            />
+            <button
+              type="button"
+              onClick={() => {
+                handleAddCustom(customInput);
+                setCustomInput('');
+              }}
+              className={`px-2.5 py-1.5 text-[10px] font-bold rounded-lg cursor-pointer transition-colors ${
+                activeTheme ? activeTheme.primaryBg : 'bg-indigo-600'
+              } text-white`}
+            >
+              Add
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface PatientFormProps {
   onAddPatient: (patientData: Omit<Patient, 'id' | 'followUps' | 'createdAt'>) => void;
@@ -127,20 +276,17 @@ export default function PatientForm({ onAddPatient, onCancel, settings, activeTh
       return;
     }
 
-    const finalConsultant = consultant === 'Other' || !consultant ? customConsultant.trim() : consultant;
-    if (isRequired('consultant') && !finalConsultant) {
+    if (isRequired('consultant') && !consultant.trim()) {
       alert(`Please select or specify a valid ${settings.labelConsultant || 'Attending Consultant'}.`);
       return;
     }
 
-    const finalDiagnosis = diagnosis === 'Other' || !diagnosis ? customDiagnosis.trim() : diagnosis;
-    if (isRequired('diagnosis') && !finalDiagnosis) {
+    if (isRequired('diagnosis') && !diagnosis.trim()) {
       alert(`Please select or specify a valid ${settings.labelDiagnosis || 'Admitting Diagnosis'}.`);
       return;
     }
 
-    const finalRoute = route === 'Other' ? customRoute.trim() : route;
-    if (isRequired('route') && !finalRoute) {
+    if (isRequired('route') && !route.trim()) {
       alert(`Please select or specify a valid ${settings.labelRoute || 'Product Route'}.`);
       return;
     }
@@ -173,10 +319,10 @@ export default function PatientForm({ onAddPatient, onCancel, settings, activeTh
       age: age === '' ? 0 : Number(age),
       sex,
       phone: phone.trim(),
-      diagnosis: finalDiagnosis,
-      consultant: finalConsultant,
+      diagnosis: diagnosis.trim(),
+      consultant: consultant.trim(),
       treatment: finalTreatment,
-      route: finalRoute,
+      route: route.trim(),
       procedurePlace: finalProcedurePlace,
       amount: amount.trim(),
       sessionNo: Number(sessionNo),
@@ -413,74 +559,37 @@ export default function PatientForm({ onAddPatient, onCancel, settings, activeTh
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="patient_diagnosis" className={`block text-[11px] font-bold uppercase tracking-widest mb-1 ${isDark ? 'text-slate-400' : 'text-slate-405'}`}>
+              <label className={`block text-[11px] font-bold uppercase tracking-widest mb-1 ${isDark ? 'text-slate-400' : 'text-slate-405'}`}>
                 {labelDiagnosis} {isRequired('diagnosis') && <span className="text-rose-500">*</span>}
               </label>
-              <select
+              <MultiSelectDropdown
                 id="patient_diagnosis"
+                label={labelDiagnosis}
+                options={settings.diagnoses}
                 value={diagnosis}
-                onChange={(e) => setDiagnosis(e.target.value)}
+                onChange={setDiagnosis}
+                placeholder="-- Select Standard Clinical Diagnoses --"
+                isDark={isDark}
                 required={isRequired('diagnosis')}
-                className={`block w-full px-3.5 py-2.5 border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-400 ${
-                  isDark ? 'bg-slate-955 border-slate-800 text-slate-105' : 'bg-slate-50 border-slate-201 text-slate-900 bg-white'
-                }`}
-              >
-                <option value="">-- Select Standard Clinical Diagnosis --</option>
-                {settings.diagnoses.map((diag) => (
-                  <option key={diag} value={diag}>
-                    {diag}
-                  </option>
-                ))}
-                <option value="Other">Other (Specify Below)...</option>
-              </select>
-
-              {(diagnosis === 'Other' || diagnosis === '') && (
-                <input
-                  id="patient_custom_diagnosis"
-                  type="text"
-                  required={isRequired('diagnosis')}
-                  placeholder="Enter custom clinical diagnosis details"
-                  value={customDiagnosis}
-                  onChange={(e) => setCustomDiagnosis(e.target.value)}
-                  className={`mt-2 block w-full px-3.5 py-2.5 border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-400 ${
-                    isDark ? 'bg-slate-950 border-slate-800 text-slate-105' : 'bg-slate-50 border-slate-200 text-slate-900'
-                  }`}
-                />
-              )}
+                activeTheme={activeTheme}
+              />
             </div>
 
             <div>
-              <label htmlFor="patient_consultant" className={`block text-[12px] font-bold uppercase tracking-widest mb-1 ${isDark ? 'text-slate-400' : 'text-slate-405'}`}>
+              <label className={`block text-[12px] font-bold uppercase tracking-widest mb-1 ${isDark ? 'text-slate-400' : 'text-slate-405'}`}>
                 {labelConsultant} {isRequired('consultant') && <span className="text-rose-500">*</span>}
               </label>
-              <select
+              <MultiSelectDropdown
                 id="patient_consultant"
+                label={labelConsultant}
+                options={settings.consultants}
                 value={consultant}
-                onChange={(e) => setConsultant(e.target.value)}
-                className={`block w-full px-3.5 py-2.5 border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-400 ${
-                  isDark ? 'bg-slate-955 border-slate-800 text-slate-105' : 'bg-slate-50 border-slate-201 text-slate-900 bg-white'
-                }`}
+                onChange={setConsultant}
+                placeholder="-- Select Registered Consultants --"
+                isDark={isDark}
                 required={isRequired('consultant')}
-              >
-                <option value="">-- Select Registered Consultant --</option>
-                {settings.consultants.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-                <option value="Other">Other (Specify below)...</option>
-              </select>
-              {(consultant === 'Other' || !settings.consultants.includes(consultant)) && (
-                <input
-                  id="patient_custom_consultant"
-                  type="text"
-                  required={isRequired('consultant')}
-                  placeholder="e.g. Dr. Eleanor Vance, MD"
-                  value={customConsultant}
-                  onChange={(e) => setCustomConsultant(e.target.value)}
-                  className={`mt-2 block w-full px-3.5 py-2.5 border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-400 ${
-                    isDark ? 'bg-slate-950 border-slate-800 text-slate-105' : 'bg-slate-50 border-slate-200 text-slate-900'
-                  }`}
-                />
-              )}
+                activeTheme={activeTheme}
+              />
             </div>
           </div>
 
@@ -550,39 +659,20 @@ export default function PatientForm({ onAddPatient, onCancel, settings, activeTh
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="order-2 md:order-2">
-              <label htmlFor="patient_route" className={`block text-[12px] font-bold uppercase tracking-widest mb-1 ${isDark ? 'text-slate-400' : 'text-slate-405'}`}>
+              <label className={`block text-[12px] font-bold uppercase tracking-widest mb-1 ${isDark ? 'text-slate-400' : 'text-slate-405'}`}>
                 {labelRoute} {isRequired('route') && <span className="text-rose-500">*</span>}
               </label>
-              <select
+              <MultiSelectDropdown
                 id="patient_route"
+                label={labelRoute}
+                options={settings.routes}
                 value={route}
-                onChange={(e) => setRoute(e.target.value)}
+                onChange={setRoute}
+                placeholder="-- Select Administration Routes --"
+                isDark={isDark}
                 required={isRequired('route')}
-                className={`block w-full px-3.5 py-2.5 border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-400 ${
-                  isDark ? 'bg-slate-955 border-slate-800 text-slate-105' : 'bg-slate-50 border-slate-201 text-slate-900 bg-white'
-                }`}
-              >
-                {settings.routes.map((rt) => (
-                  <option key={rt} value={rt}>
-                    {rt}
-                  </option>
-                ))}
-                <option value="Other">Other (Specify below)...</option>
-              </select>
-
-              {route === 'Other' && (
-                <input
-                  id="patient_custom_route"
-                  type="text"
-                  required={isRequired('route')}
-                  placeholder="e.g., Intrathecal, Epidural"
-                  value={customRoute}
-                  onChange={(e) => setCustomRoute(e.target.value)}
-                  className={`mt-2 block w-full px-3.5 py-2.5 border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-400 ${
-                    isDark ? 'bg-slate-950 border-slate-800 text-slate-105' : 'bg-slate-50 border-slate-200 text-slate-900'
-                  }`}
-                />
-              )}
+                activeTheme={activeTheme}
+              />
             </div>
 
             <div className="order-1 md:order-1">
