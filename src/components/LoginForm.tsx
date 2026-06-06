@@ -925,10 +925,32 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
       <div className="absolute top-[40%] right-[20%] w-[35%] h-[35%] rounded-full bg-violet-400/10 blur-[120px] pointer-events-none" />
 
       <div className="sm:mx-auto sm:w-full sm:max-w-xl z-10 relative">
-        <div className="flex justify-center flex-col items-center gap-2">
-          <img src="/src/assets/images/concord_logo_1780689503864.png" alt="Corporate Logo" className="h-16 max-w-[200px] object-contain rounded-2xl p-1.5 bg-white/85 border border-slate-200/60 shadow-md backdrop-blur-xs animate-float" referrerPolicy="no-referrer" />
+        <div className="flex justify-center flex-col items-center select-none pb-4">
+          <div className="relative flex items-center justify-center p-8">
+            {/* Waving concentric outer rings radiating outwards */}
+            <div className="absolute w-24 h-24 rounded-full border border-indigo-500/30 animate-pulse" />
+            <div className="absolute w-28 h-28 rounded-full border border-purple-500/20 animate-ping [animation-duration:3s]" />
+            <div className="absolute w-32 h-32 rounded-full border border-pink-500/10 animate-ping [animation-duration:4.5s] [animation-delay:1.5s]" />
+            
+            {/* Soft background pulse container */}
+            <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-indigo-500/5 to-purple-500/5 blur-xl animate-pulse" />
+
+            {/* Premium structural modular font core */}
+            <div className="relative z-10 flex items-center justify-center bg-white/95 border border-slate-200/80 shadow-xl rounded-3xl p-4 w-20 h-20 transition-all duration-300 hover:scale-110 hover:shadow-indigo-300/40 backdrop-blur-sm group overflow-hidden">
+              {/* Star-burst glitter elements using responsive CSS animations */}
+              <div className="absolute top-1 right-2 text-yellow-400 text-xs animate-bounce [animation-duration:3.2s] pointer-events-none">✨</div>
+              <div className="absolute bottom-2 left-1.5 text-amber-300 text-xs animate-pulse [animation-duration:1.8s] pointer-events-none">⭐</div>
+              <div className="absolute top-3.5 left-1.5 text-purple-400 text-[8px] animate-ping [animation-duration:2.8s] pointer-events-none">✨</div>
+              <div className="absolute bottom-1 right-2 text-cyan-400 text-xs animate-bounce [animation-duration:2.4s] pointer-events-none">✨</div>
+
+              {/* Monogram Display letter with shining text clipping */}
+              <span className="text-4xl font-extrabold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent transform group-hover:rotate-6 transition-all duration-300 pointer-events-none tracking-normal font-sans">
+                C
+              </span>
+            </div>
+          </div>
         </div>
-        <h2 className="mt-6 text-center text-3xl font-black text-slate-850 tracking-tight uppercase font-display bg-gradient-to-r from-indigo-700 via-purple-700 to-pink-600 bg-clip-text text-transparent">
+        <h2 className="mt-2 text-center text-3xl font-black text-slate-850 tracking-tight uppercase font-display bg-gradient-to-r from-indigo-700 via-purple-700 to-pink-600 bg-clip-text text-transparent">
           {appName || 'MedRecord Pro'}
         </h2>
       </div>

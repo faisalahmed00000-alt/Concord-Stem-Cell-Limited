@@ -68,8 +68,17 @@ import {
   mapPatientsToSheetRows, 
   mapSheetRowsToPatients,
   listSpreadsheetsInDrive,
-  SpreadsheetMetadata
+  SpreadsheetMetadata,
+  exportPatientOutcomesReport
 } from '../utils/googleSheets';
+import { 
+  exportPatientProgressDoc 
+} from '../utils/googleDocs';
+import { 
+  backupDatabaseToDrive, 
+  listBackupsInDrive, 
+  restoreDatabaseFromDrive 
+} from '../utils/googleDrive';
 import { User as FirebaseUser } from 'firebase/auth';
 
 
@@ -454,6 +463,13 @@ export default function PatientList({
   });
   const [authMethod, setAuthMethod] = useState<'oauth' | 'manual'>('oauth');
 
+  // Google Drive & Google Docs state variables
+  const [driveBackups, setDriveBackups] = useState<any[]>([]);
+  const [isDriveBackupsLoading, setIsDriveBackupsLoading] = useState(false);
+  const [workspaceActiveTab, setWorkspaceActiveTab] = useState<'sheets' | 'drive' | 'docs'>('sheets');
+  const [docExportUrl, setDocExportUrl] = useState<{ [patientId: string]: string }>({});
+  const [isDocExporting, setIsDocExporting] = useState<{ [patientId: string]: boolean }>({});
+
   // Google Drive File Explorer states
   const [driveFiles, setDriveFiles] = useState<SpreadsheetMetadata[]>([]);
   const [isDriveFetching, setIsDriveFetching] = useState(false);
@@ -489,6 +505,7 @@ export default function PatientList({
         setSheetsAccessToken(token);
         setSheetsStatus({ type: 'success', message: `Connected as ${user.email} (Ready for Google Sheets sync).` });
         handleFetchDriveFiles(token);
+        handleFetchBackupFiles(token);
       },
       () => {
         setGoogleUser(null);
@@ -517,6 +534,131 @@ export default function PatientList({
     return trimmed;
   };
 
+  const handleFetchBackupFiles = async (token?: string | null) => {
+    const activeToken = token || (authMethod === 'manual' ? manualToken.trim() : sheetsAccessToken);
+    if (!activeToken) return;
+    setIsDriveBackupsLoading(true);
+    try {
+      const backups = await listBackupsInDrive(activeToken);
+      setDriveBackups(backups);
+    } catch (err: any) {
+      console.error('Failed to load drive backups:', err);
+    } finally {
+      setIsDriveBackupsLoading(false);
+    }
+  };
+
+  const handleBackupDatabaseToDrive = async () => {
+    const token = getActiveToken();
+    if (!token) {
+      setSheetsStatus({ type: 'error', message: 'Access Denied: Please authorize via Google Sign-In or set a manual token first.' });
+      return;
+    }
+    const confirmed = window.confirm(
+      `SECURITY CONFIRMATION:\nYou are about to backup the active local patient database (${patients.length} patient records) onto your clinical Google Drive.\n\nDo you wish to proceed?`
+    );
+    if (!confirmed) return;
+
+    // Secure Passphrase Prompt for AES-GCM encryption
+    const passphrase = window.prompt(
+      `ENCRYPTION PASSKEY REQUIREMENT:\nEnter a strong password/passphrase to lock and encrypt your clinical backup file.\n\nYou MUST memorize or retain this passphrase to restore/decrypt this file in the future!`,
+      "ConcordClinicalSecret123!"
+    );
+    if (passphrase === null) return; // User clicked Cancel
+
+    setIsSheetsLoading(true);
+    setSheetsStatus({ type: 'loading', message: 'Generating clinical Backup file...' });
+    try {
+      const timestamp = new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '').replace(/:/g, '-');
+      const fileName = `Clinical Ledger Backup - ${timestamp}.json`;
+      await backupDatabaseToDrive(token, patients, fileName, passphrase);
+      setSheetsStatus({
+        type: 'success',
+        message: `Successfully backed up encrypted database to Google Drive as "${fileName}"!`
+      });
+      handleFetchBackupFiles(token);
+    } catch (err: any) {
+      console.error(err);
+      setSheetsStatus({
+        type: 'error',
+        message: `Drive Backup Error: ${err.message}`
+      });
+    } finally {
+      setIsSheetsLoading(false);
+    }
+  };
+
+  const handleRestoreDatabaseFromDrive = async (fileId: string, fileName: string) => {
+    const token = getActiveToken();
+    if (!token) {
+      setSheetsStatus({ type: 'error', message: 'Access Denied: Please authorize via Google Sign-In or set a manual token first.' });
+      return;
+    }
+    const confirmed = window.confirm(
+      `CRITICAL VERIFICATION:\nYou are about to restore the local database from clinical backup "${fileName}" on Google Drive.\n\nTHIS WILL OVERWRITE AND MERGE CLINICAL DOSSIERS. Proceed with caution?`
+    );
+    if (!confirmed) return;
+
+    setIsSheetsLoading(true);
+    setSheetsStatus({ type: 'loading', message: `Retrieving and compiling database chunk from Drive...` });
+    try {
+      let restored: Patient[];
+      try {
+        // Try restoring. If it is encrypted, it throws prompting for password.
+        restored = await restoreDatabaseFromDrive(token, fileId);
+      } catch (err: any) {
+        if (err.message.includes('encrypted') || err.message.includes('Decryption')) {
+          const passphrase = window.prompt('This remote backup is encrypted. Please enter the correct decryption passphrase:');
+          if (passphrase === null) {
+            setIsSheetsLoading(false);
+            setSheetsStatus({ type: 'error', message: 'Restore cancelled: Decryption passphrase is required.' });
+            return;
+          }
+          restored = await restoreDatabaseFromDrive(token, fileId, passphrase);
+        } else {
+          throw err;
+        }
+      }
+
+      await onImportPatients(restored);
+      setSheetsStatus({
+        type: 'success',
+        message: `Database successfully restored. Loaded ${restored.length} patient records from backup file!`
+      });
+    } catch (err: any) {
+      console.error(err);
+      setSheetsStatus({
+        type: 'error',
+        message: `Restore Failed: ${err.message}`
+      });
+    } finally {
+      setIsSheetsLoading(false);
+    }
+  };
+
+  const handleExportToDoc = async (patient: Patient) => {
+    const token = getActiveToken();
+    if (!token) {
+      alert('Access Denied: Please authorize via Google Sign-In or set a manual token in the Sync panel first.');
+      return;
+    }
+
+    setIsDocExporting(prev => ({ ...prev, [patient.id]: true }));
+    try {
+      const doc = await exportPatientProgressDoc(token, patient, settings);
+      setDocExportUrl(prev => ({ ...prev, [patient.id]: doc.url }));
+      setSheetsStatus({
+        type: 'success',
+        message: `Successfully created Google Document for "${patient.name}"!`
+      });
+    } catch (err: any) {
+      console.error(err);
+      alert(`Google Docs Export Failed: ${err.message}`);
+    } finally {
+      setIsDocExporting(prev => ({ ...prev, [patient.id]: false }));
+    }
+  };
+
   const handleGoogleLogin = async () => {
     setIsSheetsLoading(true);
     setSheetsStatus({ type: 'loading', message: 'Opening Google authentication portal...' });
@@ -529,6 +671,8 @@ export default function PatientList({
           type: 'success',
           message: `Authenticated successfully as ${result.user.email}!`
         });
+        handleFetchDriveFiles(result.accessToken);
+        handleFetchBackupFiles(result.accessToken);
       }
     } catch (err: any) {
       console.error(err);
@@ -617,6 +761,55 @@ export default function PatientList({
       setSheetsStatus({
         type: 'error',
         message: `Google Sheets API Error: ${err.message}`
+      });
+    } finally {
+      setIsSheetsLoading(false);
+    }
+  };
+
+  const handleCreateAndExportOutcomeReport = async () => {
+    const token = getActiveToken();
+    if (!token) {
+      setSheetsStatus({ type: 'error', message: 'Access Denied: Please authorize via Google Sign-In or set a manual token first.' });
+      return;
+    }
+
+    if (patients.length === 0) {
+      setSheetsStatus({ type: 'error', message: 'No patient records exist in current safe ledger to generate outcome report.' });
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `OUTCOME REPORT GENERATOR:\nYou are about to generate a formatted Clinical Outcome Report containing recovery rates, progress metrics and case demographics for health managers.\n\nDo you wish to proceed?`
+    );
+    if (!confirmed) return;
+
+    setIsSheetsLoading(true);
+    setSheetsStatus({ type: 'loading', message: 'Compiling metrics & formatting Google Sheet...' });
+
+    try {
+      const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+      const meta = await exportPatientOutcomesReport(token, patients, `Clinical Outcome Report - ${dateStr}`);
+      
+      const newSheetItem: SpreadsheetMetadata = {
+        id: meta.id,
+        title: meta.title,
+        url: meta.url
+      };
+      
+      const updatedList = [newSheetItem, ...createdSheetsList.filter(s => s.id !== meta.id)].slice(0, 5);
+      saveCreatedSheets(updatedList);
+      setSpreadsheetIdOrUrl(meta.url);
+
+      setSheetsStatus({
+        type: 'success',
+        message: `Outcome Report generated successfully: "${meta.title}"!`
+      });
+    } catch (err: any) {
+      console.error(err);
+      setSheetsStatus({
+        type: 'error',
+        message: `Outcome Report Generation Error: ${err.message}`
       });
     } finally {
       setIsSheetsLoading(false);
@@ -1503,24 +1696,23 @@ AES-256 Secured Clinical Client-Side Dispatch`;
             )}
           </div>
         )}
-
         {showSheetsPortal && (
           <div className={`border rounded-2xl p-6 space-y-5 animate-fade-in font-sans ${
             isDark ? 'bg-slate-950/50 border-slate-800' : 'bg-slate-50/55 border-slate-200/60'
           }`}>
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-800/40 pb-4">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <Cloud className="h-5 w-5 text-emerald-500" />
                   <h4 className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-205' : 'text-slate-800'}`}>
-                    Google Sheets Cloud Integration
+                    Google Workspace Cloud Integration
                   </h4>
                   <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200/30">
-                    Active Secure
+                    Enterprise Secure
                   </span>
                 </div>
                 <p className="text-[10px] text-slate-400">
-                  Export structured clinical cohorts or import patient records directly from your Google Drive spread sheets via official Google REST APIs.
+                  Securely link your clinical ledger to Google Workspace services (Sheets, Drive Backups, and narrative Docs) via authenticated endpoints.
                 </p>
               </div>
               <button 
@@ -1531,13 +1723,53 @@ AES-256 Secured Clinical Client-Side Dispatch`;
               </button>
             </div>
 
-            {/* Authentication Gateway Selector */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 border-t pt-4">
-              {/* Credentials / Auth block */}
+            {/* Integration Portal Tab Navigation Header */}
+            <div className="flex border-b border-slate-850 dark:border-slate-800 pb-2 mb-4 gap-4">
+              <button
+                type="button"
+                onClick={() => setWorkspaceActiveTab('sheets')}
+                className={`pb-1.5 px-1.5 text-[10px] font-black uppercase tracking-wider transition-all border-b-2 cursor-pointer ${
+                  workspaceActiveTab === 'sheets'
+                    ? 'border-emerald-500 text-emerald-400 font-extrabold'
+                    : 'border-transparent text-slate-400 hover:text-slate-350'
+                }`}
+              >
+                📊 Google Sheets Sync
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setWorkspaceActiveTab('drive');
+                  handleFetchBackupFiles();
+                }}
+                className={`pb-1.5 px-1.5 text-[10px] font-black uppercase tracking-wider transition-all border-b-2 cursor-pointer ${
+                  workspaceActiveTab === 'drive'
+                    ? 'border-emerald-500 text-emerald-400 font-extrabold'
+                    : 'border-transparent text-slate-400 hover:text-slate-350'
+                }`}
+              >
+                🗄️ Google Drive Backups
+              </button>
+              <button
+                type="button"
+                onClick={() => setWorkspaceActiveTab('docs')}
+                className={`pb-1.5 px-1.5 text-[10px] font-black uppercase tracking-wider transition-all border-b-2 cursor-pointer ${
+                  workspaceActiveTab === 'docs'
+                    ? 'border-emerald-500 text-emerald-400 font-extrabold'
+                    : 'border-transparent text-slate-400 hover:text-slate-350'
+                }`}
+              >
+                📝 Narrative Google Docs
+              </button>
+            </div>
+
+            {/* Auth strategy & Workspace Content Area */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-1">
+              {/* Identity authorization column */}
               <div className="lg:col-span-5 space-y-3.5">
                 <div className="flex items-center justify-between">
                   <label className="text-[10px] font-bold text-slate-450 uppercase tracking-widest block">
-                    Identity Authorization Gateway
+                    Identity Gateway
                   </label>
                   <div className="flex border rounded-lg overflow-hidden p-0.5">
                     <button
@@ -1546,7 +1778,7 @@ AES-256 Secured Clinical Client-Side Dispatch`;
                       className={`px-2 py-0.75 text-[9px] font-bold uppercase tracking-wider rounded-md cursor-pointer ${
                         authMethod === 'oauth' 
                           ? 'bg-slate-800 text-white' 
-                          : 'text-slate-500 hover:text-slate-700'
+                          : 'text-slate-500 hover:text-slate-750'
                       }`}
                     >
                       Auth Sign-In
@@ -1557,7 +1789,7 @@ AES-256 Secured Clinical Client-Side Dispatch`;
                       className={`px-2 py-0.75 text-[9px] font-bold uppercase tracking-wider rounded-md cursor-pointer ${
                         authMethod === 'manual' 
                           ? 'bg-slate-800 text-white' 
-                          : 'text-slate-500 hover:text-slate-700'
+                          : 'text-slate-500 hover:text-slate-750'
                       }`}
                     >
                       Manual Key
@@ -1578,7 +1810,7 @@ AES-256 Secured Clinical Client-Side Dispatch`;
                             {googleUser.email ? googleUser.email.charAt(0).toUpperCase() : 'U'}
                           </div>
                           <div className="min-w-0">
-                            <p className="text-xs font-bold truncate text-slate-200">{googleUser.displayName || 'Authorized Clinician'}</p>
+                            <p className="text-xs font-bold truncate text-slate-205">{googleUser.displayName || 'Authorized Clinician'}</p>
                             <p className="text-[10px] text-slate-400 truncate">{googleUser.email}</p>
                           </div>
                         </div>
@@ -1597,7 +1829,7 @@ AES-256 Secured Clinical Client-Side Dispatch`;
                         </div>
                         <div className="space-y-1">
                           <p className="text-xs font-bold">Unauthenticated Gate</p>
-                          <p className="text-[10px] text-slate-400">Sign in with your Google account to grant direct sheets edit scopes.</p>
+                          <p className="text-[10px] text-slate-400">Sign in with Google to grant Sheets, Docs & Drive active scopes.</p>
                         </div>
                         
                         <button
@@ -1650,143 +1882,292 @@ AES-256 Secured Clinical Client-Side Dispatch`;
                 )}
               </div>
 
-              {/* Operations Control block */}
+              {/* Dynamic Workspace Active Tab Target View Area */}
               <div className="lg:col-span-7 space-y-4">
-                <label className="text-[10px] font-bold text-slate-450 uppercase tracking-widest block">
-                  Sheet Sync & Migration Actions
-                </label>
-
-                <div className={`p-4 rounded-2xl space-y-4 ${isDark ? 'bg-slate-900 border border-slate-800' : 'bg-white border border-slate-200/50'}`}>
-                  {/* Target input */}
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-400 block">
-                      Google Spreadsheet URL or ID
+                {workspaceActiveTab === 'sheets' && (
+                  <div className="space-y-4">
+                    <label className="text-[10px] font-bold text-slate-450 uppercase tracking-widest block">
+                      Google Sheets Integration Control
                     </label>
-                    <input
-                      type="text"
-                      placeholder="Paste e.g. https://docs.google.com/spreadsheets/d/SpreadsheetID/edit"
-                      value={spreadsheetIdOrUrl}
-                      onChange={(e) => setSpreadsheetIdOrUrl(e.target.value)}
-                      className={`block w-full px-3 py-2 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 border ${
-                        isDark ? 'bg-slate-950 border-slate-800 text-slate-200' : 'bg-white border-slate-300 text-slate-900'
-                      }`}
-                    />
-                  </div>
 
-                  {/* Sync Action Grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pb-1.5">
-                    <button
-                      onClick={handleImportFromSheet}
-                      disabled={isSheetsLoading || (!sheetsAccessToken && !manualToken.trim())}
-                      className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border text-[10px] font-bold uppercase tracking-wider hover:bg-slate-50/5 cursor-pointer transition-colors disabled:opacity-40"
-                      style={{ borderColor: 'var(--color-slate-700)' }}
-                      title="Load patient dossiers into EHR safely"
-                    >
-                      <Download className="h-3.5 w-3.5 text-blue-400" /> Pull & Merge from Sheet
-                    </button>
-                    <button
-                      onClick={handleSyncToExistingSheet}
-                      disabled={isSheetsLoading || (!sheetsAccessToken && !manualToken.trim())}
-                      className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border text-[10px] font-bold uppercase tracking-wider hover:bg-slate-50/5 cursor-pointer transition-colors disabled:opacity-40"
-                      style={{ borderColor: 'var(--color-slate-700)' }}
-                      title="Overwrite specified document with local cohort list"
-                    >
-                      <RefreshCw className={`h-3.5 w-3.5 text-emerald-400 ${isSheetsLoading ? 'animate-spin' : ''}`} /> Push & Sync to Sheet
-                    </button>
-                  </div>
-
-                  {/* Google Drive Spreadsheet Explorer */}
-                  <div className="border-t pt-3.5 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5">
-                        <Cloud className="h-4 w-4 text-sky-400 animate-pulse" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest block text-slate-400">
-                          📂 Launch EHR Portal directly from Google Drive
-                        </span>
+                    <div className={`p-4 rounded-2xl space-y-4 ${isDark ? 'bg-slate-900 border border-slate-800' : 'bg-white border border-slate-200/50'}`}>
+                      {/* Target input */}
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-400 block">
+                          Google Spreadsheet URL or ID
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Paste e.g. https://docs.google.com/spreadsheets/d/SpreadsheetID/edit"
+                          value={spreadsheetIdOrUrl}
+                          onChange={(e) => setSpreadsheetIdOrUrl(e.target.value)}
+                          className={`block w-full px-3 py-2 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 border ${
+                            isDark ? 'bg-slate-950 border-slate-800 text-slate-200' : 'bg-white border-slate-300 text-slate-900'
+                          }`}
+                        />
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => handleFetchDriveFiles()}
-                        disabled={isDriveFetching}
-                        className="text-[9px] font-semibold text-sky-400 hover:text-sky-350 flex items-center gap-1 cursor-pointer disabled:opacity-45"
-                      >
-                        <RefreshCw className={`h-3 w-3 ${isDriveFetching ? 'animate-spin' : ''}`} /> Scan Drive
-                      </button>
-                    </div>
 
-                    {driveError ? (
-                      <p className="text-[10px] text-slate-500 italic px-1">{driveError}</p>
-                    ) : driveFiles.length > 0 ? (
-                      <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1 border border-slate-800/40 rounded-xl p-2 bg-slate-900/30">
-                        {driveFiles.map((file) => {
-                          const isActive = spreadsheetIdOrUrl.includes(file.id);
-                          return (
-                            <div
-                              key={file.id}
-                              className={`flex items-center justify-between p-2 rounded-lg text-xs transition-all ${
-                                isActive 
-                                  ? 'bg-sky-500/10 border border-sky-500/35 text-sky-200' 
-                                  : 'hover:bg-slate-800/40 text-slate-300'
-                              }`}
-                            >
-                              <div className="min-w-0 pr-2">
-                                <p className="font-bold truncate text-[11.5px]">{file.title}</p>
-                                <p className="text-[9px] font-mono text-slate-500 truncate">ID: {file.id}</p>
-                              </div>
-                              <div className="flex items-center gap-2.5 shrink-0">
-                                <a
-                                  href={file.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="p-1 hover:text-sky-400 text-slate-400 transition-colors"
-                                  title="View on Google Drive"
-                                >
-                                  <ExternalLink className="h-3.5 w-3.5" />
-                                </a>
-                                <button
-                                  type="button"
-                                  onClick={() => handleLaunchFromDriveSheet(file.id, file.title, file.url)}
-                                  className={`px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider rounded-md cursor-pointer transition-colors ${
+                      {/* Sync Action Grid */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pb-1.5">
+                        <button
+                          onClick={handleImportFromSheet}
+                          disabled={isSheetsLoading || (!sheetsAccessToken && !manualToken.trim())}
+                          className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border text-[10px] font-bold uppercase tracking-wider hover:bg-slate-50/5 cursor-pointer transition-colors disabled:opacity-40"
+                          style={{ borderColor: 'var(--color-slate-700)' }}
+                          title="Load patient dossiers into EHR safely"
+                        >
+                          <Download className="h-3.5 w-3.5 text-blue-400" /> Pull & Merge from Sheet
+                        </button>
+                        <button
+                          onClick={handleSyncToExistingSheet}
+                          disabled={isSheetsLoading || (!sheetsAccessToken && !manualToken.trim())}
+                          className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border text-[10px] font-bold uppercase tracking-wider hover:bg-slate-50/5 cursor-pointer transition-colors disabled:opacity-40"
+                          style={{ borderColor: 'var(--color-slate-700)' }}
+                          title="Overwrite specified document with local cohort list"
+                        >
+                          <RefreshCw className={`h-3.5 w-3.5 text-emerald-400 ${isSheetsLoading ? 'animate-spin' : ''}`} /> Push & Sync to Sheet
+                        </button>
+                      </div>
+
+                      {/* Google Drive Spreadsheet Explorer */}
+                      <div className="border-t pt-3.5 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <Cloud className="h-4 w-4 text-sky-400" />
+                            <span className="text-[10px] font-bold uppercase tracking-widest block text-slate-400">
+                              📂 Launch EHR Portal from GDrive Spreadsheets
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleFetchDriveFiles()}
+                            disabled={isDriveFetching}
+                            className="text-[9px] font-semibold text-sky-400 hover:text-sky-350 flex items-center gap-1 cursor-pointer disabled:opacity-45"
+                          >
+                            <RefreshCw className={`h-3 w-3 ${isDriveFetching ? 'animate-spin' : ''}`} /> Scan Drive
+                          </button>
+                        </div>
+
+                        {driveError ? (
+                          <p className="text-[10px] text-slate-500 italic px-1">{driveError}</p>
+                        ) : driveFiles.length > 0 ? (
+                          <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1 border border-slate-800/40 rounded-xl p-2 bg-slate-900/30">
+                            {driveFiles.map((file) => {
+                              const isActive = spreadsheetIdOrUrl.includes(file.id);
+                              return (
+                                <div
+                                  key={file.id}
+                                  className={`flex items-center justify-between p-2 rounded-lg text-xs transition-all ${
                                     isActive 
-                                      ? 'bg-emerald-600 text-white brightness-110' 
-                                      : 'bg-slate-805 text-slate-300 hover:bg-slate-705'
+                                      ? 'bg-sky-500/10 border border-sky-500/35 text-sky-200' 
+                                      : 'hover:bg-slate-800/40 text-slate-300'
                                   }`}
                                 >
-                                  {isActive ? 'Active Connected' : '🚀 Launch'}
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })}
+                                  <div className="min-w-0 pr-2">
+                                    <p className="font-bold truncate text-[11.5px]">{file.title}</p>
+                                    <p className="text-[9px] font-mono text-slate-500 truncate">ID: {file.id}</p>
+                                  </div>
+                                  <div className="flex items-center gap-2.5 shrink-0">
+                                    <a
+                                      href={file.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="p-1 hover:text-sky-400 text-slate-400 transition-colors"
+                                      title="View on Google Drive"
+                                    >
+                                      <ExternalLink className="h-3.5 w-3.5" />
+                                    </a>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleLaunchFromDriveSheet(file.id, file.title, file.url)}
+                                      className={`px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider rounded-md cursor-pointer transition-colors ${
+                                        isActive 
+                                          ? 'bg-emerald-600 text-white brightness-110' 
+                                          : 'bg-slate-805 text-slate-300 hover:bg-slate-705'
+                                      }`}
+                                    >
+                                      {isActive ? 'Active Connected' : '🚀 Launch'}
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <p className="text-[10px] text-slate-445 italic px-1">Connect your account to scan and launch via Google Drive files.</p>
+                        )}
                       </div>
-                    ) : (
-                      <p className="text-[10px] text-slate-450 italic px-1">Connect your account above to scan and launch via GDrive files.</p>
-                    )}
-                  </div>
 
-                  {/* Auto generation hero banner */}
-                  <div className="border-t pt-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3">
-                    <div className="flex items-center gap-1.5">
-                      <Sparkles className="h-4 w-4 text-emerald-500" />
-                      <div className="min-w-0">
-                        <p className="text-[10px] font-bold">Standardized Template Export</p>
-                        <p className="text-[9px] text-slate-400">Instantly generate a highly-compliant cohort ledger in Drive.</p>
+                      {/* Auto generation hero banner */}
+                      <div className="border-t pt-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                        <div className="flex items-center gap-1.5 align-middle">
+                          <Sparkles className="h-4 w-4 text-emerald-500" />
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-bold">Standardized Workspace Exports</p>
+                            <p className="text-[9px] text-slate-400">Instantly export general patient ledgers or compile outcomes reporting sheets.</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 shrink-0">
+                          <button
+                            onClick={handleCreateAndExportSheet}
+                            disabled={isSheetsLoading || (!sheetsAccessToken && !manualToken.trim())}
+                            className={`px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-sm transition-colors cursor-pointer disabled:opacity-40`}
+                          >
+                            Create standard sheet
+                          </button>
+                          <button
+                            onClick={handleCreateAndExportOutcomeReport}
+                            disabled={isSheetsLoading || (!sheetsAccessToken && !manualToken.trim())}
+                            className={`px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl shadow-sm transition-colors cursor-pointer disabled:opacity-40`}
+                          >
+                            Outcomes report
+                          </button>
+                        </div>
                       </div>
                     </div>
-                    <button
-                      onClick={handleCreateAndExportSheet}
-                      disabled={isSheetsLoading || (!sheetsAccessToken && !manualToken.trim())}
-                      className={`px-4.5 py-2 text-[10px] font-bold uppercase tracking-wider text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-sm transition-colors cursor-pointer disabled:opacity-40 shrink-0`}
-                    >
-                      Create & Export New Sheet
-                    </button>
                   </div>
-                </div>
+                )}
+
+                {workspaceActiveTab === 'drive' && (
+                  <div className="space-y-4">
+                    <label className="text-[10px] font-bold text-slate-450 uppercase tracking-widest block">
+                      Google Drive Secure Redundant Backup
+                    </label>
+
+                    <div className={`p-4 rounded-2xl space-y-4 ${isDark ? 'bg-slate-900 border border-slate-800' : 'bg-white border border-slate-200/50'}`}>
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="min-w-0">
+                          <p className="text-[11px] font-bold text-slate-200">Snapshot Clinical Safe Ledger</p>
+                          <p className="text-[9px] text-slate-400 leading-relaxed mt-0.5">
+                            Write a secure JSON export containing a fully cryptographically sealed ledger archive directly into your Cloud storage.
+                          </p>
+                        </div>
+                        <button
+                          onClick={handleBackupDatabaseToDrive}
+                          disabled={isSheetsLoading || (!sheetsAccessToken && !manualToken.trim())}
+                          className="px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-white bg-blue-600 hover:bg-blue-500 transition-colors rounded-xl shrink-0 cursor-pointer disabled:opacity-40 flex items-center gap-1.5"
+                        >
+                          <Cloud className="h-3.5 w-3.5" /> Snapshot Ledger
+                        </button>
+                      </div>
+
+                      <div className="border-t pt-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                            📁 Redundant Backup Archives
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => handleFetchBackupFiles()}
+                            disabled={isDriveBackupsLoading || (!sheetsAccessToken && !manualToken.trim())}
+                            className="text-[9px] text-sky-400 hover:text-sky-300 flex items-center gap-1 cursor-pointer disabled:opacity-40"
+                          >
+                            <RefreshCw className={`h-3 w-3 ${isDriveBackupsLoading ? 'animate-spin' : ''}`} /> Scan Backups
+                          </button>
+                        </div>
+
+                        {isDriveBackupsLoading ? (
+                          <p className="text-[10px] text-slate-450 italic">Scanning files for valid backups...</p>
+                        ) : driveBackups.length > 0 ? (
+                          <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                            {driveBackups.map((archive) => (
+                              <div
+                                key={archive.id}
+                                className="flex items-center justify-between p-2.5 rounded-xl border border-slate-800/40 bg-slate-950/20 text-xs hover:bg-slate-900/30 transition-all"
+                              >
+                                <div className="min-w-0 pr-2">
+                                  <p className="font-extrabold text-slate-250 truncate text-[11px]">{archive.title}</p>
+                                  <p className="text-[9px] font-mono text-slate-500 truncate mt-0.5">
+                                    ID: {archive.id.slice(0, 16)}... • Size: {(archive.size / 1024).toFixed(1)} KB
+                                  </p>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRestoreDatabaseFromDrive(archive.id, archive.title)}
+                                  disabled={isSheetsLoading}
+                                  className="px-2.5 py-1 text-[9px] font-black uppercase tracking-wider bg-emerald-950 text-emerald-400 hover:bg-emerald-900 border border-emerald-550/30 rounded-lg cursor-pointer disabled:opacity-40 transition-colors shrink-0"
+                                >
+                                  Deploy & Restore
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-[10px] text-slate-500 italic">No compatible database snapshot files discovered in Drive container.</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {workspaceActiveTab === 'docs' && (
+                  <div className="space-y-4">
+                    <label className="text-[10px] font-bold text-slate-450 uppercase tracking-widest block">
+                      Google Docs Narrative Summaries
+                    </label>
+
+                    <div className={`p-4 rounded-2xl space-y-4 ${isDark ? 'bg-slate-900 border border-slate-800' : 'bg-white border border-slate-200/50'}`}>
+                      <div className="p-3.5 rounded-xl bg-sky-950/20 border border-sky-900/30 text-xs">
+                        <p className="font-bold text-sky-400 mb-1 flex items-center gap-1.5">
+                          📝 Transcribe Clinical Progression History
+                        </p>
+                        <p className="text-[10px] text-slate-400 leading-relaxed">
+                          Format patient chronicles elegantly with standard healthcare headers, patient vitals, diagnosis indicators, intake sheets, and follow-up clinical timelines directly into Google Documents.
+                        </p>
+                      </div>
+
+                      <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
+                        {patients.map((p) => (
+                          <div
+                            key={p.id}
+                            className="flex items-center justify-between p-2.5 rounded-xl border border-slate-850 bg-slate-950/20 hover:bg-slate-900/30 text-xs transition-all"
+                          >
+                            <div className="min-w-0 pr-2">
+                              <p className="font-bold text-slate-205">{p.name}</p>
+                              <p className="text-[9px] text-slate-500 mt-0.5 font-mono">
+                                Diagnosis: {p.diagnosis || 'None'} • Progress: {p.improvement || 'Stable'}
+                              </p>
+                            </div>
+                            <div className="shrink-0 font-mono">
+                              {docExportUrl[p.id] ? (
+                                <a
+                                  href={docExportUrl[p.id]}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider rounded-lg border border-sky-400/30 text-sky-400 bg-sky-500/10 hover:bg-sky-500/20 inline-flex items-center gap-1"
+                                >
+                                  <ExternalLink className="h-3 w-3" /> View Doc
+                                </a>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleExportToDoc(p)}
+                                  disabled={isDocExporting[p.id] || isSheetsLoading || (!sheetsAccessToken && !manualToken.trim())}
+                                  className="px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg cursor-pointer disabled:opacity-40 transition-all inline-flex items-center gap-1"
+                                >
+                                  {isDocExporting[p.id] ? (
+                                    <>
+                                      <RefreshCw className="h-3 w-3 animate-spin" /> Publishing...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Sparkles className="h-3 w-3 text-sky-400" /> Print to Doc
+                                    </>
+                                  )}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Created Sheets History log */}
-            {createdSheetsList.length > 0 && (
+            {/* Created Sheets History log (Only displayed if Sheets tab holds active created history) */}
+            {workspaceActiveTab === 'sheets' && createdSheetsList.length > 0 && (
               <div className="border-t pt-4 space-y-2">
                 <label className="text-[10px] font-bold text-slate-450 uppercase tracking-widest block">
                   Recently Synced Cohorts in Google Drive
@@ -2268,6 +2649,31 @@ AES-256 Secured Clinical Client-Side Dispatch`;
                                   <Mail className="h-3.5 w-3.5 text-rose-500" />
                                   Email Secure Report
                                 </button>
+
+                                {/* Export to Google Docs */}
+                                {docExportUrl[patient.id] ? (
+                                  <a
+                                    key={`doc_view_${patient.id}`}
+                                    href={docExportUrl[patient.id]}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="w-full text-left px-2.5 py-1.5 rounded-xl text-[10px] font-bold transition-all flex items-center gap-2 cursor-pointer bg-sky-500/10 text-sky-450 hover:bg-sky-500/15"
+                                  >
+                                    <ExternalLink className="h-3.5 w-3.5 text-sky-400" />
+                                    View Google Doc
+                                  </a>
+                                ) : (
+                                  <button
+                                    key={`doc_export_${patient.id}`}
+                                    type="button"
+                                    onClick={() => handleExportToDoc(patient)}
+                                    disabled={isDocExporting[patient.id]}
+                                    className="w-full text-left px-2.5 py-1.5 rounded-xl text-[10px] font-bold transition-all flex items-center gap-2 cursor-pointer hover:bg-slate-900 text-slate-350 disabled:opacity-40"
+                                  >
+                                    <Sparkles className={`h-3.5 w-3.5 text-sky-400 ${isDocExporting[patient.id] ? 'animate-spin' : ''}`} />
+                                    {isDocExporting[patient.id] ? 'Exporting...' : 'Export to Google Doc'}
+                                  </button>
+                                )}
                               </motion.div>
                             )}
                           </AnimatePresence>

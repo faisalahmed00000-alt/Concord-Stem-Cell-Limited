@@ -263,3 +263,94 @@ export async function listSpreadsheetsInDrive(accessToken: string): Promise<Spre
     url: f.webViewLink || `https://docs.google.com/spreadsheets/d/${f.id}`,
   }));
 }
+
+/**
+ * Compiles patient recovery statistics and writes a formatted clinical outcome report to a new Google Sheet.
+ */
+export async function exportPatientOutcomesReport(
+  accessToken: string,
+  patients: Patient[],
+  reportTitle: string
+): Promise<SpreadsheetMetadata> {
+  // 1. Create a blank sheet with the requested title
+  const spreadsheet = await createSpreadsheet(accessToken, reportTitle);
+
+  // 2. Compute aggregate clinical stats for the clinical managers
+  const total = patients.length;
+  let significantlyImprovedCount = 0;
+  let improvedCount = 0;
+  let unchangedStableCount = 0;
+  let deterioratedCount = 0;
+
+  patients.forEach(p => {
+    const status = String(p.improvement || '').toLowerCase();
+    if (status.includes('significantly')) significantlyImprovedCount++;
+    else if (status.includes('deteriorated')) deterioratedCount++;
+    else if (status.includes('improved')) improvedCount++;
+    else unchangedStableCount++; // default/stable
+  });
+
+  const significantlyImprovedPct = total > 0 ? ((significantlyImprovedCount / total) * 100).toFixed(1) : '0.0';
+  const improvedPct = total > 0 ? ((improvedCount / total) * 100).toFixed(1) : '0.0';
+  const unchangedStablePct = total > 0 ? ((unchangedStableCount / total) * 100).toFixed(1) : '0.0';
+  const deterioratedPct = total > 0 ? ((deterioratedCount / total) * 100).toFixed(1) : '0.0';
+
+  // 3. Construct a beautiful reporting matrix (Title, stats bento-block, detailed table)
+  const rows: any[][] = [];
+
+  // Header Title
+  rows.push(['CONCORD REGENERATIVE CLINICAL HEALTH LEDGER']);
+  rows.push(['CLINICAL COHORT OUTCOME REPORT FOR HEALTHCARE MANAGERS']);
+  rows.push([`Generated On: ${new Date().toLocaleString()} (Local Area Client)`]);
+  rows.push([]);
+
+  // Aggregate stats block
+  rows.push(['COHORT STATISTICAL HIGHLIGHTS', '', '', '', '', '']);
+  rows.push(['Metric Identifier', 'Absolute Count', 'Cohort Ratio (%)', '', '', '']);
+  rows.push(['Fully Registered Cohort Patients', total, '100.0%', '', '', '']);
+  rows.push(['Significantly Improved Cases', significantlyImprovedCount, `${significantlyImprovedPct}%`, '', '', '']);
+  rows.push(['Stable/Standard Improved Cases', improvedCount, `${improvedPct}%`, '', '', '']);
+  rows.push(['Maintained / Unchanged Baseline', unchangedStableCount, `${unchangedStablePct}%`, '', '', '']);
+  rows.push(['Deteriorated Progression Profile', deterioratedCount, `${deterioratedPct}%`, '', '', '']);
+  rows.push([]);
+
+  // Detailed records section header
+  rows.push(['DETAILED CLINICAL CASE OUTCOMES DATA LEDGER']);
+  rows.push([
+    'Patient Name',
+    'Identifier Code',
+    'Age (Years)',
+    'Biological Sex',
+    'Clinical Diagnosis',
+    'Attending Practitioner',
+    'Active Protocol',
+    'Sessions Completed',
+    'Admission Date',
+    'Primary Outcome Profile',
+    'Medical Progress Remarks'
+  ]);
+
+  // Insert case rows
+  patients.forEach(p => {
+    rows.push([
+      p.name || 'Anonymous Patient',
+      p.code || 'N/A',
+      p.age || 0,
+      p.sex || 'Other',
+      p.diagnosis || 'Routine Evaluation',
+      p.consultant || 'N/A',
+      p.treatment || 'N/A',
+      p.sessionNo || 1,
+      p.date || 'N/A',
+      p.improvement || 'Stable',
+      p.notes || ''
+    ]);
+  });
+
+  // Write values into the active sheet (Sheet1)
+  const range = 'Sheet1!A1:K' + rows.length;
+  await updateSpreadsheetValues(accessToken, spreadsheet.id, range, rows);
+
+  return spreadsheet;
+}
+

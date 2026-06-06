@@ -70,8 +70,9 @@ const adminApp = getApps().length === 0
   : getApp();
 
 // Use initializeFirestore with long polling to prevent standard Web Socket / gRPC RPC stream timeouts in Node environments
-const db = firebaseConfig.firestoreDatabaseId 
-  ? initializeFirestore(adminApp, { experimentalForceLongPolling: true }, firebaseConfig.firestoreDatabaseId)
+const config = firebaseConfig as any;
+const db = config.firestoreDatabaseId 
+  ? initializeFirestore(adminApp, { experimentalForceLongPolling: true }, config.firestoreDatabaseId)
   : initializeFirestore(adminApp, { experimentalForceLongPolling: true });
 
 // Diagnostic/Resiliency Helpers and Local File Backup Sync (EHR hybrid data layer)
